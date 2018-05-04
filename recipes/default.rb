@@ -26,7 +26,7 @@ include_recipe "geoserver-tomcat::postgresql"
 
 # install grdle
 include_recipe "gradle::tarball"
-gradleCmd = "JAVA_HOME=#{node.java.java_home} gradle"
+gradleCmd = "JAVA_HOME=#{node.java.java_home} /usr/local/gradle/bin/gradle"
 repo = "#{Chef::Config[:file_cache_path]}/naksha"
 #additionalConfig = "#{node.naksha.additional_config}"
 
