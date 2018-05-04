@@ -33,7 +33,6 @@ repo = "#{Chef::Config[:file_cache_path]}/naksha"
 bash 'cleanup extracted naksha' do
    code <<-EOH
    rm -rf #{node.naksha.extracted}
-   rm -f #{additionalConfig}
    EOH
    action :nothing
    notifies :run, 'bash[unpack naksha]'
@@ -59,7 +58,10 @@ bash 'unpack naksha' do
 
   EOH
   not_if "test -d #{node.naksha.extracted}"
-  notifies :create, "template[#{additionalConfig}]",:immediately
+#  notifies :create, "template[#{additionalConfig}]",:immediately
+  notifies :run, "bash[compile_naksha]"
+  notifies :run, "bash[copy additional config]"
+
   #notifies :run, "bash[copy static files]",:immediately
 end
 
@@ -88,7 +90,7 @@ bash "compile_naksha" do
   EOH
 
   not_if "test -f #{node.naksha.war}"
-  only_if "test -f #{additionalConfig}"
+#  only_if "test -f #{additionalConfig}"
   notifies :run, "bash[copy additional config]", :immediately
 end
 
@@ -108,11 +110,11 @@ bash "copy additional config" do
 end
 
 #  create additional-config
-template additionalConfig do
-  source "biodiv-api.properties.erb"
-  notifies :run, "bash[compile_naksha]"
-  notifies :run, "bash[copy additional config]"
-end
+#template additionalConfig do
+#  source "biodiv-api.properties.erb"
+#  notifies :run, "bash[compile_naksha]"
+#  notifies :run, "bash[copy additional config]"
+#end
 
 cerner_tomcat node.biodiv.tomcat_instance do
   version "7.0.54"
