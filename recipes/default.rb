@@ -16,19 +16,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-# setup solr
 include_recipe "elasticsearch"
 
 # setup geoserver
 include_recipe "geoserver-tomcat"
 include_recipe "geoserver-tomcat::postgresql"
 
-# install grdle
-include_recipe "gradle::tarball"
-gradleCmd = "JAVA_HOME=#{node.java.java_home} /usr/local/gradle/bin/gradle"
-repo = "#{Chef::Config[:file_cache_path]}/naksha"
-#additionalConfig = "#{node.naksha.additional_config}"
+include_recipe "gradle"
+gradleCmd = "JAVA_HOME=#{node.java.java_home} #{node.naksha.extracted}/gradlew"
+nakshaRepo = "#{Chef::Config[:file_cache_path]}/naksha"
+
 
 bash 'cleanup extracted naksha' do
    code <<-EOH
@@ -55,25 +52,10 @@ bash 'unpack naksha' do
   if [ "$folderName" != "$expectedFolderName" ]; then
       mv "$folderName" "$expectedFolderName"
   fi
-
   EOH
   not_if "test -d #{node.naksha.extracted}"
-#  notifies :create, "template[#{additionalConfig}]",:immediately
   notifies :run, "bash[compile_naksha]"
-  notifies :run, "bash[copy additional config]"
-
-  #notifies :run, "bash[copy static files]",:immediately
 end
-
-bash 'copy static files' do
-  code <<-EOH
-  mkdir -p #{node.biodiv.data}/images
-  cp -r #{node.biodiv.extracted}/web-app/images/* #{node.biodiv.data}/images
-  chown -R tomcat:tomcat #{node.biodiv.data}
-  EOH
-  only_if "test -d #{node.biodiv.extracted}"
-end
-
 
 # Setup user/group
 poise_service_user "tomcat user" do
@@ -85,40 +67,18 @@ end
 bash "compile_naksha" do
   code <<-EOH
   cd #{node.naksha.extracted}
-  yes | #{gradleCmd} war  #{node.naksha.war}
+  yes | #{gradleCmd} war
   chmod +r #{node.naksha.war}
   EOH
 
   not_if "test -f #{node.naksha.war}"
-#  only_if "test -f #{additionalConfig}"
-  notifies :run, "bash[copy additional config]", :immediately
-end
-
-bash "copy additional config" do
-# code <<-EOH
-#  mkdir -p /tmp/biodiv-temp/WEB-INF/lib
-#  mkdir -p ~tomcat/.grails
-#  cp #{additionalConfig} ~tomcat/.grails
-#  cp #{additionalConfig} /tmp/biodiv-temp/WEB-INF/lib
-#  cd /tmp/biodiv-temp/
-#  jar -uvf #{node.biodiv.war}  WEB-INF/lib
-#  chmod +r #{node.biodiv.war}
-#  #rm -rf /tmp/biodiv-temp
-#  EOH
   notifies :enable, "cerner_tomcat[#{node.biodiv.tomcat_instance}]", :immediately
   action :nothing
 end
 
-#  create additional-config
-#template additionalConfig do
-#  source "biodiv-api.properties.erb"
-#  notifies :run, "bash[compile_naksha]"
-#  notifies :run, "bash[copy additional config]"
-#end
-
 cerner_tomcat node.biodiv.tomcat_instance do
   version "7.0.54"
-  web_app "biodiv-api" do
+  web_app "naksha" do
     source "file://#{node.naksha.war}"
 
 #    template "META-INF/context.xml" do
